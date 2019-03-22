@@ -1,18 +1,8 @@
 function [q,R,Mmu,Nii_reg] = spm_mtvcoreg(varargin)
-
-%--------------------------------------------------------------------------
-% TODO
-% -Run check_obj w/o random jittering 
-% -Higher interpolation degree for bsplin (don't forget coeff at first!)
-% -For CT, use lam = 1e3? Or divide by max for all?
-% -Improve convergence by decreasing sc?
-% -Use a smaller sc0?
-% -Zero centre?
-%--------------------------------------------------------------------------
-
-%--------------------------------------------------------------------------
-% Parse settings
-%--------------------------------------------------------------------------
+% varargin{1}   = Images as Niis or filenames
+% varargin{2}   = flags
+% varargin{>=3} = Arguments to Powell
+%__________________________________________________________________________
 
 if nargin < 3
     if nargin < 2
@@ -21,27 +11,54 @@ if nargin < 3
         flags = varargin{2};
     end
 
+    %----------------------------------------------------------------------
+    % Parse settings
+    %----------------------------------------------------------------------
+
+    % Convergence criteria [tx,ty,tz,rx,ry,rz]
     if ~isfield(flags,'tol'),    flags.tol     = [0.02 0.02 0.02 0.001 0.001 0.001]; end
-    if ~isfield(flags,'fwhm'),   flags.fwhm    = [12 8 4 0]; end % TODO: Find optimal scheds
+    % For iteratively applying less smoothing, in unit FWHM, algorithm
+    % calls spm_powell numel(flags.fwhm) times
+    if ~isfield(flags,'fwhm'),   flags.fwhm    = [12 8 4 0]; end 
+    % For iteratively decreasing subsampling of images (f). Needs to be at
+    % most as many elements as flags.fwhm (1 == no subsampling)
     if ~isfield(flags,'samp'),   flags.samp    = [3 2 1.5 1]; end
+    % Degree to subsample each image
+    if ~isfield(flags,'degsamp'),flags.degsamp = 4; end 
+    % For iteratively decreasing voxel size of template (mu). Needs to be at
+    % most as many elements as flags.fwhm
     if ~isfield(flags,'vxmu'),   flags.vxmu    = [2 1.75 1.5 1]; end
-    if ~isfield(flags,'degsamp'),flags.degsamp = 4; end % TODO: What resampling degree here?
-    if ~isfield(flags,'mx_tr'),  flags.mx_tr   = 60; end
-    if ~isfield(flags,'mx_rot'), flags.mx_rot  = 15; end
+    % Ad-hoc constraints to not move or rotate too much...
+    if ~isfield(flags,'mx_tr'),  flags.mx_tr   = 60; end % degrees
+    if ~isfield(flags,'mx_rot'), flags.mx_rot  = 15; end % mm
                                  flags.mx_rot  = flags.mx_rot*pi/180;
+    % Verbosity levels:
+    %                   0 - No verbose
+    %                   1 - Displays input and registered for different
+    %                   scheds
+    %                   2 - 1 + hist fits and subsampled images
+    %                   3 - 1 + 2 + realtime view of mtv
     if ~isfield(flags,'speak'),  flags.speak   = 0; end
+    % Instead of using maximum bounding-box (bb), uses bb derived from SPM
+    % MNI template
     if ~isfield(flags,'bbmni'),  flags.bbmni   = true; end
+    % Extra padding of MNI bb
+    if ~isfield(flags,'bbpad'),  flags.bbpad   = 0; end 
+    % Modality of each input image (e.g., {'MRI','CT'})
     if ~isfield(flags,'mod'),    flags.mod     = {}; end
-    if ~isfield(flags,'bbpad'),  flags.bbpad   = 0; end % mm
-    if ~isfield(flags,'write'),  flags.write   = false; end % mm
-    if ~isfield(flags,'tol_scl'), flags.tol_scl = 1; end % mm
+    % Modify orientation matrices of input images with registration
+    % parameters
+    if ~isfield(flags,'write'),  flags.write   = false; end 
+    % For changing tolerance of algorithm
+    if ~isfield(flags,'tol_scl'), flags.tol_scl = 1; end 
 end
 
-%--------------------------------------------------------------------------
-% Step into Powell optimiser
-%--------------------------------------------------------------------------
-
 if nargin > 2
+    
+    %----------------------------------------------------------------------
+    % Step into Powell optimiser
+    %----------------------------------------------------------------------
+    
     q = optfun(varargin{:});
     return;
 end
@@ -77,24 +94,20 @@ for c=1:C
 
     has_negval = min(Nii(c).dat(:)) < 0;
     
-%     if strcmp(flags.mod{c},'ct')
-%         mu_brain = 1e3; % TODO: Grid-search on RIRE
-%     else
-        % Get mean brain intensity                
-        if has_negval
-            % Fit GMM
-            [~,mu_brain] = fit_gmm(Nii(c),flags.speak > 1); 
-        else
-            % Fit RMM
-            [~,mu_brain] = spm_noise_estimate_mod(Nii(c),flags.speak > 1);
-        end
-%     end
+    % Get mean brain intensity                
+    if has_negval
+        % Fit GMM
+        [~,mu_brain] = fit_gmm(Nii(c),flags.speak > 1); 
+    else
+        % Fit RMM
+        [~,mu_brain] = spm_noise_estimate_mod(Nii(c),flags.speak > 1);
+    end
     
     lam(c) = 1/double(mu_brain);            
 end
 
 %--------------------------------------------------------------------------
-% 
+% Store final bb parameters
 %--------------------------------------------------------------------------
 
 mat0 = zeros(4,4,C);
@@ -108,7 +121,7 @@ end
 [Mmu0,dmmu0] = max_bb_orient(mat0,dm0,flags.vxmu(end),flags.bbmni,flags.bbpad);
 
 %--------------------------------------------------------------------------
-% Do Powell
+% Initialise
 %--------------------------------------------------------------------------
 
 if is2d
@@ -121,6 +134,7 @@ end
 sc0  = flags.tol(:)';    % Required accuracy
 q    = zeros(1,C*npar);
 
+% To make sure that Powell zero centres q
 opt_pow          = struct;
 opt_pow.mc.do    = true;
 opt_pow.mc.npar  = npar;
@@ -128,8 +142,13 @@ opt_pow.mc.C     = C;
 opt_pow.mc.speak = false;
     
 if flags.speak
+    % Verbose
     display_results(q,Nii,mat0,Mmu0,dmmu0,lam,npar,1,'Input');
 end
+
+%--------------------------------------------------------------------------
+% Iterate Powell
+%--------------------------------------------------------------------------
 
 for k=1:numel(flags.fwhm)
     
@@ -137,7 +156,10 @@ for k=1:numel(flags.fwhm)
     samp = flags.samp(min(k,numel(flags.samp)));
     vxmu = flags.vxmu(min(k,numel(flags.vxmu)));
     
+    %----------------------------------------------------------------------
     % Pull out image data, and possibly subsample (if samp > 1) and smooth (if fwhm > 0)
+    %----------------------------------------------------------------------
+    
     f    = cell(1,C);
     matk = zeros(4,4,C);
     dmk  = zeros(C,3);
@@ -152,29 +174,46 @@ for k=1:numel(flags.fwhm)
     clear fc
     if flags.speak > 1, drawnow; end
         
-    % Get mean orientXation matrix and dimensions        
-    [Mmu,dmmu] = max_bb_orient(matk,dmk,vxmu,flags.bbmni,flags.bbpad); % TODO: OK to use MNI here?
+    %----------------------------------------------------------------------
+    % Get mean orientation matrix and dimensions        
+    %----------------------------------------------------------------------
+    
+    [Mmu,dmmu] = max_bb_orient(matk,dmk,vxmu,flags.bbmni,flags.bbpad);
     fovmu      = abs(Mmu*[dmmu'+0.5; 1]-Mmu*[0.5*ones(3,1); 1]);
     fovmu      = fovmu(1:3);
 
+    %----------------------------------------------------------------------
     % Get interpolation grid
+    %----------------------------------------------------------------------
+    
     x = get_x(dmmu);
 
-    % Initial values and stopping criterias (changes with decreasing FWHM)
+    %----------------------------------------------------------------------
+    % Initial search values and stopping criterias (changes with decreasing FWHM)
+    %----------------------------------------------------------------------
+    
     sc            = [];
     for c=1:C, sc = [sc sc0]; end
     iq            = diag(sc*20);
     sc            = max(fwhm/2,1)*sc*flags.tol_scl;
     
+    %----------------------------------------------------------------------
+    % Start Powell
+    %----------------------------------------------------------------------
+    
     q = my_spm_powell(q(:),iq,sc,opt_pow,mfilename,f,x,matk,Mmu,dmmu,lam,npar,fovmu,flags,flags.speak > 2);        
     
     if flags.speak
+        % Verbose
         display_results(q,Nii,mat0,Mmu0,dmmu0,lam,npar,2,['k=' num2str(k) ', samp=' num2str(samp) ', fwhm=' num2str(fwhm) ', vx=' num2str(vxmu)]);
     end
 end
 
+%--------------------------------------------------------------------------
 % Prepare output
-%-----------------------------------------------------------------------
+%--------------------------------------------------------------------------
+
+% Rigid matrices
 B = get_rigid_basis;
 R = zeros(4,4,C);
 for c=1:C
@@ -188,8 +227,7 @@ end
 
 Nii_reg = nifti;
 if flags.write
-    % Adjust orientation matrices
-    %-----------------------------------------------------------------------
+    % Adjust orientation matrices of input images    
     for c=1:C
         
         FileName = Nii(c).dat.fname;    
@@ -224,12 +262,9 @@ end
 % end
 
 get_slice = false;
-
-% mtv = compute_mtv(q,f,x,mat,Mmu,dmmu,lambda,npar,get_slice,show);
-% o   = sum(sum(sum(double(sqrt(mtv)))));
-[mtv,tv] = compute_mtv(q,f,x,mat,Mmu,dmmu,lambda,npar,get_slice,show);
-o        = sum(sum(sum(double(mtv)))) + sum( - sum(sum(sum(double(tv),1),2),3)); % TODO: Correct implementation?
-% o        = mean(mtv(:)) - sum(mean(reshape(tv,[],size(tv,4)),1)); % TODO: Correct implementation?
+[mtv,tv]  = compute_mtv(q,f,x,mat,Mmu,dmmu,lambda,npar,get_slice,show);
+o         = sum(sum(sum(double(mtv)))) + sum( - sum(sum(sum(double(tv),1),2),3));
+% o        = mean(mtv(:)) - sum(mean(reshape(tv,[],size(tv,4)),1));
 %==========================================================================
 
 %==========================================================================   
@@ -249,7 +284,6 @@ for c=1:C
     if npar == 3
         qc = [qc(1) qc(2) 0 0 0 qc(3)];
     end
-%     R  = spm_matrix(qc(:)');
     R  = spm_dexpm(qc,B); 
     
     Mf = mat(:,:,c);
@@ -418,27 +452,6 @@ bb = [mn; mx];
 %==========================================================================
 
 %==========================================================================
-function bb = vox_bb(V)
-%  world-bb -- get bounding box in world (mm) coordinates
-
-d = V.dim(1:3);
-% corners in voxel-space
-c = [ 1    1    1 
-    1    1    d(3)
-    1    d(2) 1   
-    1    d(2) d(3)
-    d(1) 1    1   
-    d(1) 1    d(3)
-    d(1) d(2) 1   
-    d(1) d(2) d(3)]';
-
-% bounding box (world) min and max
-mn = min(c,[],2)';
-mx = max(c,[],2)';
-bb = [mn; mx];
-%==========================================================================
-
-%==========================================================================
 function id = get_id(dm)
 id        = cell(3,1);
 [id{1:3}] = ndgrid(single(1:dm(1)),single(1:dm(2)),single(1:dm(3)));
@@ -488,9 +501,13 @@ for c=1:C
     f{c} = spm_diffeo('bsplinc',single(Nii(c).dat(:,:,:)),[2 2 2 0 0 0]);
 end
 
-x   = get_x(dmmu);
-mtv = compute_mtv(q,f,x,mat,Mmu,dmmu,lambda,npar);
+x        = get_x(dmmu);
+[mtv,tv] = compute_mtv(q,f,x,mat,Mmu,dmmu,lambda,npar);
 
+for c=1:C
+    mtv = mtv - tv(:,:,:,c);
+end
+    
 figure(665);
 if plt == 1, clf(figure(665)); end
 
@@ -626,7 +643,6 @@ par                 = [deg bc];
 C                   = spm_bsplinc(img,par);
 img                 = spm_bsplins(C,x1,y1,z1,par);    
 img(~isfinite(img)) = 0;
-% img(img<0)          = 0;
 
 % Smooth
 vx  = sqrt(sum(mat(1:3,1:3).^2));
