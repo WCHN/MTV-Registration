@@ -201,7 +201,9 @@ for k=1:numel(flags.fwhm)
     % Start Powell
     %----------------------------------------------------------------------
     
-    q = my_spm_powell(q(:),iq,sc,opt_pow,mfilename,f,x,matk,Mmu,dmmu,lam,npar,fovmu,flags,flags.speak > 2);        
+    show_live = flags.speak > 2;
+    q         = my_spm_powell(q(:),iq,sc,opt_pow,mfilename,f,x,matk,Mmu, ...
+                              dmmu,lam,npar,fovmu,show_live);        
     
     if flags.speak
         % Verbose
@@ -240,21 +242,17 @@ end
 %==========================================================================
 
 %==========================================================================
-function o = optfun(q,f,x,mat,Mmu,dmmu,lambda,npar,fovmu,flags,show)
+function o = optfun(q,f,x,mat,Mmu,dmmu,lambda,npar,fovmu,show)
 % Computes registration objective function as:
 % MTV(a,b,c) - TV(a) - TV(b) - TV(c)
 %__________________________________________________________________________
 
-if nargin < 10 || isempty(flags)
-    flags.mx_tr  = 50;
-    flags.mx_rot = 10*pi/180;
-end
-if nargin < 11, show = false; end
+if nargin < 10, show = false; end
 
-if outside_fov(fovmu,q,npar) || any(~isfinite(q))
-    o = realmax;
-    return    
-end
+% if outside_fov(fovmu,q,npar) || any(~isfinite(q))
+%     o = realmax;
+%     return    
+% end
 
 % if ~q_ok(q,numel(f),npar,flags)
 %     o = 1e10; % TODO: very ad-hoc...
@@ -717,7 +715,7 @@ for i=1:numel(par)
     fovmu      = fovmu(1:3);
     x          = get_x(dmmu);
     
-    val(i) = optfun(q,f,x,mat,Mmu,dmmu,lam,npar,fovmu,[],true);
+    val(i) = optfun(q,f,x,mat,Mmu,dmmu,lam,npar,fovmu,true);
     
     figure(668); plot(par(1:i),val(1:i),'b-x'); drawnow
 end

@@ -5,8 +5,7 @@ dir_code                = './code';
 addpath(dir_code);
 addpath(dir_distributed_toolbox);
 
-job_mode = 'for';
-job_name = 'mtv-reg-brainweb';
+job_mode = 'qsub';
 job_mem  = '6G';
     
 %--------------------------------------------------------------------------
@@ -15,19 +14,19 @@ job_mem  = '6G';
 
 opt_gen         = struct;
 if strcmp(job_mode,'qsub')
-    opt_gen.DirRef  = './BrainWebNoise';
+    opt_gen.DirRef  = '/data/mbrud/populations/original/BrainWebNoiseFree/';
     opt_gen.DirTemp = '/data/mbrud/Holly/mtv-reg-brainweb/';
 else
-    opt_gen.DirRef  = '/home/mbrud/dev/mbrud/code/matlab/MTV-preproc/ReferenceData/BrainWeb';
+    opt_gen.DirRef  = './BrainWeb';
     opt_gen.DirTemp = './Temp/ValidateMTVonBrainWeb';
 end
-opt_gen.NumRuns = 100;
+opt_gen.NumRuns = 2000;
 opt_gen.NumChan = 3;
 opt_gen.Speak   = true;
 
 opt_gen.DoMTV   = true;
 opt_gen.DoIT    = true;
-opt_gen.Run3D   = false;
+opt_gen.Run3D   = true;
 
 % MTV flags
 opt_mtv         = struct;
@@ -38,7 +37,7 @@ opt_mtv.bbmni   = false;
 opt_mtv.mx_tr   = 100;
 opt_mtv.mx_rot  = 30;
 opt_mtv.tol_scl = 0.5;
-opt_mtv.speak   = 1;
+opt_mtv.speak   = 2;
 
 % IT flags
 opt_it          = struct;
@@ -81,7 +80,7 @@ opt_sim.d_deg = 0;
 
 % Noise
 opt_sim.n_mn = 0;
-opt_sim.n_mx = 0.3; % 0.3
+opt_sim.n_mx = 0.5; % 0.3
 
 % Margin
 opt_sim.mrg = 20; % 20
@@ -114,7 +113,7 @@ disp('---------------------------------------------------------------')
 fprintf('Experiment: (%s)\n',opt_gen.DirRef)      
  
 Runs                             = cell(1,opt_gen.NumRuns);
-for r=1:opt_gen.NumRuns, Runs{r} = 3 + r; end
+for r=1:opt_gen.NumRuns, Runs{r} = r; end
 
 [~,Res] = distribute(holly,'RunExperiment','iter',Runs,opt);       
 

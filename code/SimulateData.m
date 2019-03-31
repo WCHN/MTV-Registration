@@ -139,10 +139,19 @@ for c=1:C % Loop over channels
 %     end            
 
     if NoisePrct > 0
-        % Add noise
+        % Add noise 
+        % MR images are usually reconstructed as the magnitude of
+        % an image that was originally complex.  Gaussian noise on complex
+        % data gives a Rice distribution in the magnitude.
+        
         msk = isfinite(img) & img > 0;
         mn  = mean(img(msk));
-        img = abs(img + (NoisePrct*mn)*randn(size(img)));
+        
+%         img = abs(img + (NoisePrct*mn)*randn(size(img)));        
+%         img = abs(img + (NoisePrct*mn)*randn(size(img)) + sqrt(-1)*(NoisePrct*mn)*randn(size(img)));
+        v1  = 0;
+        s1  = NoisePrct*mn;
+        img = img + ricernd(v1*ones(size(img)), s1);
     end      
     
     %----------------------------------------------------------------------
