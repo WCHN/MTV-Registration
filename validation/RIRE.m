@@ -1,4 +1,4 @@
-function ValidateMTVonRIRE
+function RIRE
 
 dir_code = '/home/mbrud/dev/mbrud/code/matlab/MTV-reg/code';
 addpath(dir_code);
@@ -7,9 +7,9 @@ addpath(dir_code);
 % Main settings
 %--------------------------------------------------------------------------
 
-DirData            = './data/rire/images';
-DirTransformations = './data/rire/transforms';
-DirTemp            = './Temp/ValidateMTVonRIRE';
+DirData            = '../data/rire/images';
+DirTransformations = '../data/rire/transforms';
+DirTemp            = '../Temp/ValidateMTVonRIRE';
 
 if exist(DirTemp,'dir') == 7, rmdir(DirTemp,'s'); end; mkdir(DirTemp); 
 

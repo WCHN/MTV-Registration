@@ -1,4 +1,4 @@
-function ValidateMTVonBrainWeb
+function BrainWeb
 
 dir_distributed_toolbox = '/home/mbrud/dev/mbrud/code/matlab/distributed-computing';
 dir_code                = '/home/mbrud/dev/mbrud/code/matlab/MTV-reg/code';
@@ -17,17 +17,17 @@ if strcmp(job_mode,'qsub')
     opt_gen.DirRef  = '/data/mbrud/populations/original/BrainWebNoiseFree/';
     opt_gen.DirTemp = '/data/mbrud/Holly/MTV-reg/';
 else
-    opt_gen.DirRef  = './data/brainweb';
-    opt_gen.DirTemp = './Temp/ValidateMTVonBrainWeb';
+    opt_gen.DirRef  = '../data/brainweb';
+    opt_gen.DirTemp = '../Temp/ValidateMTVonBrainWeb';
 end
-opt_gen.NumRuns  = 1;
+opt_gen.NumRuns  = 2000;
 opt_gen.NumChan  = 3;
 opt_gen.Speak    = true;
 opt_gen.DirPrint = '';
 
 opt_gen.DoMTV   = true;
 opt_gen.DoIT    = true;
-opt_gen.Run3D   = true;
+opt_gen.Run3D   = false;
 
 % MTV flags
 opt_mtv         = struct;
@@ -59,7 +59,7 @@ if exist(opt_gen.DirTemp,'dir') == 7, rmdir(opt_gen.DirTemp,'s'); end; mkdir(opt
 
 opt_sim = struct;
 
-opt_sim.do = false; % If simulation should be performed?
+opt_sim.do = true; % If simulation should be performed?
 
 % Bias field
 opt_sim.bf_mn = 0;

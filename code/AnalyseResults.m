@@ -1,14 +1,14 @@
 function AnalyseResults(Res)
 
-% var = load('Res-N1000-2d.mat');
-% Res = var.Res;
-% clear var
+var = load('Res-N2000-3d.mat');
+Res = var.Res;
+clear var
 
 % Implement possibility to limit range of ds,noise,off,rot and bf in
 % boxplot
 
 N = numel(Res);
-N = 2000;
+% N = 2000;
 
 val_mtv = get_val(Res,'mtv');
 val_mi  = get_val(Res,'mi');

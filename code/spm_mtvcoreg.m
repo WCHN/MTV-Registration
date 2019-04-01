@@ -50,7 +50,7 @@ if nargin < 3
     % parameters
     if ~isfield(flags,'write'),  flags.write   = false; end 
     % For changing tolerance of algorithm
-    if ~isfield(flags,'tol_scl'), flags.tol_scl = 1; end 
+    if ~isfield(flags,'tol_scl'), flags.tol_scl = 0.5; end 
     % Save MTV to NIfTI, before and after registration
     if ~isfield(flags,'save_mtv'),  flags.save_mtv   = false; end 
 end

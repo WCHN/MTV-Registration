@@ -10,12 +10,13 @@ function [oNii,oNii2d,Offset,Rotation,bb0,R3d,R2d] = SimulateData(varargin)
 p              = inputParser;
 p.FunctionName = 'SimulateData';
 p.addParameter('DirRef','');
+p.addParameter('Random',false);
 p.addParameter('DirSim','./SimulatedData');
 p.addParameter('NoisePrct',0);
 p.addParameter('Offset',{});
 p.addParameter('Rotation',{});
 p.addParameter('DownSampling',{});
-p.addParameter('DownSamplingDeg',1);
+p.addParameter('DownSamplingDeg',0);
 p.addParameter('BiasFieldScl',0);
 p.addParameter('ShowSimulated',false);
 p.addParameter('ThickSliced',false);
@@ -33,6 +34,82 @@ mrg             = p.Results.Margin;
 DownSampling    = p.Results.DownSampling;
 DownSamplingDeg = p.Results.DownSamplingDeg;
 DirPrint        = p.Results.DirPrint;
+Random          = p.Results.Random;
+
+if Random
+    %----------------------------------------------------------------------
+    % Generate some random parameters
+    %----------------------------------------------------------------------
+    
+    NumChan = 3;
+    Idx     = randperm(NumChan);
+    Ref     = Idx(1);
+    Src     = Idx(Idx ~= Ref);
+
+    % Bias field
+    bf_mn = 0;
+    bf_mx = 2;
+
+    % Rotation (degrees)
+    r_mn = 0;
+    r_mx = 15;
+    r_mn = r_mn*pi/180;
+    r_mx = r_mx*pi/180;
+
+    % Translation (mm)
+    t_mn = 0;
+    t_mx = 50;
+
+    % Downsampling
+    d_mx = 6;
+
+    % Noise
+    n_mn = 0;
+    n_mx = 0.5;
+
+    % Margin
+    Margin = 20;
+    
+    % Noise
+    NoisePrct = n_mn + rand*(n_mx - n_mn);
+
+    % Bias field
+    BiasFieldScl = bf_mn + rand*(bf_mx - bf_mn);
+
+    Offset   = {[0; 0; 0],[0; 0; 0],[0; 0; 0]};
+    Rotation = {[0; 0; 0],[0; 0; 0],[0; 0; 0]};
+    for s = Src
+        % Translation
+        t         = t_mn + (sign(randn(3,1)).*rand(3,1))*(t_mx - t_mn);  
+        Offset{s} = t;
+
+        % Rotation
+        r           = r_mn + (sign(randn(3,1)).*rand(3,1))*(r_mx - r_mn);
+        Rotation{s} = r;
+    end
+
+    % Down-sampling
+    ds                      = randi(max(d_mx,1),1);
+    DownSampling            = {[1 1 1],[1 1 1],[1 1 1]};
+    DownSampling{1}(Idx(1)) = 1/ds;
+    DownSampling{2}(Idx(2)) = 1/ds;
+    DownSampling{3}(Idx(3)) = 1/ds;    
+    DownSampling{1}(end)    = 1;
+    DownSampling{2}(end)    = 1;
+    DownSampling{3}(end)    = 1;
+    
+    % Margin
+    mrg = {[0 0 0],[0 0 0],[0 0 0]};
+    if Margin > 0
+        mrg1                  = 2*(randperm(NumChan) - 1);
+        mrg{1}(Idx(1))        = Margin;
+        mrg{1}(1:3 ~= Idx(1)) = mrg1(1);
+        mrg{2}(Idx(2))        = Margin;
+        mrg{2}(1:3 ~= Idx(2)) = mrg1(2);
+        mrg{3}(Idx(3))        = Margin;
+        mrg{3}(1:3 ~= Idx(3)) = mrg1(3);
+    end
+end
 
 %--------------------------------------------------------------------------
 % Parameters
