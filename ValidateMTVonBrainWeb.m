@@ -17,7 +17,7 @@ if strcmp(job_mode,'qsub')
     opt_gen.DirRef  = '/data/mbrud/populations/original/BrainWebNoiseFree/';
     opt_gen.DirTemp = '/data/mbrud/Holly/MTV-reg/';
 else
-    opt_gen.DirRef  = './BrainWeb';
+    opt_gen.DirRef  = './data/brainweb';
     opt_gen.DirTemp = './Temp/ValidateMTVonBrainWeb';
 end
 opt_gen.NumRuns  = 1;

@@ -7,8 +7,8 @@ addpath(dir_code);
 % Main settings
 %--------------------------------------------------------------------------
 
-DirData            = '/home/mbrud/Data/challenges/RIRE/proc-train/';
-DirTransformations = '/home/mbrud/Data/challenges/RIRE/transformations/';
+DirData            = './data/rire/images';
+DirTransformations = './data/rire/transforms';
 DirTemp            = './Temp/ValidateMTVonRIRE';
 
 if exist(DirTemp,'dir') == 7, rmdir(DirTemp,'s'); end; mkdir(DirTemp); 
