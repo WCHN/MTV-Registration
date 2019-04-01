@@ -1,6 +1,6 @@
 function ValidateMTVonRIRE
 
-dir_code = '/home/mbrud/dev/mbrud/code/matlab/mtvreg-powell/code';
+dir_code = '/home/mbrud/dev/mbrud/code/matlab/MTV-reg/code';
 addpath(dir_code);
 
 %--------------------------------------------------------------------------
@@ -17,15 +17,16 @@ DoIT  = false;
 DoMTV = true;
 
 % MTV flags
-OptionsMTV.speak   = 1;
-OptionsMTV.bbpad   = 0;%[0 0 0;0 60 0];
-OptionsMTV.degsamp = 4; 
-% OptionsMTV.fwhm    = 0;
-OptionsMTV.bbmni   = false;
-% OptionsMTV.samp    = 1;
-OptionsMTV.mx_tr   = 100;
-OptionsMTV.mx_rot  = 30;
-OptionsMTV.tol_scl = 0.5;
+OptionsMTV.speak    = 1;
+OptionsMTV.bbpad    = 0;%[0 0 0;0 60 0];
+OptionsMTV.degsamp  = 4; 
+% OptionsMTV.fwhm     = 0;
+OptionsMTV.bbmni    = false;
+% OptionsMTV.samp     = 1;
+OptionsMTV.mx_tr    = 100;
+OptionsMTV.mx_rot   = 30;
+OptionsMTV.tol_scl  = 0.5;
+OptionsMTV.save_mtv = true;
 
 % NMI flags
 OptionsIT.sep      = [4 1];

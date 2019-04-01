@@ -51,6 +51,8 @@ if nargin < 3
     if ~isfield(flags,'write'),  flags.write   = false; end 
     % For changing tolerance of algorithm
     if ~isfield(flags,'tol_scl'), flags.tol_scl = 1; end 
+    % Save MTV to NIfTI, before and after registration
+    if ~isfield(flags,'save_mtv'),  flags.save_mtv   = false; end 
 end
 
 if nargin > 2
@@ -78,10 +80,6 @@ if isempty(flags.mod)
     flags.mod = repelem({'mri'},1,C);
 end
 
-if 0    
-    check_obj(Nii,[1 2],12,60,120);
-end
-
 %--------------------------------------------------------------------------
 % Get lambda from mean brain intensity
 %--------------------------------------------------------------------------
@@ -90,17 +88,24 @@ lam = zeros(1,C);
 nr  = floor(sqrt(C));
 nc  = ceil(C/nr);  
 for c=1:C
-    if flags.speak > 1, figure(664); if c == 1, clf(figure(664)); end; subplot(nr,nc,c); end        
+    if flags.speak 
+        if c == 1  
+            set_figure('(SPM) Estimate lambda',true); 
+        else
+            set_figure('(SPM) Estimate lambda'); 
+        end 
+        subplot(nr,nc,c); 
+    end        
 
     has_negval = min(Nii(c).dat(:)) < 0;
     
     % Get mean brain intensity                
     if has_negval
         % Fit GMM
-        [~,mu_brain] = fit_gmm(Nii(c),flags.speak > 1); 
+        [~,mu_brain] = fit_gmm(Nii(c),flags.speak); 
     else
         % Fit RMM
-        [~,mu_brain] = spm_noise_estimate_mod(Nii(c),flags.speak > 1);
+        [~,mu_brain] = spm_noise_estimate_mod(Nii(c),flags.speak);
     end
     
     lam(c) = 1/double(mu_brain);            
@@ -131,8 +136,8 @@ else
     npar      = 6;
 end
 
-sc0  = flags.tol(:)';    % Required accuracy
-q    = zeros(1,C*npar);
+sc0 = flags.tol(:)'; % Required accuracy
+q   = zeros(1,C*npar);
 
 % To make sure that Powell zero centres q
 opt_pow          = struct;
@@ -141,9 +146,20 @@ opt_pow.mc.npar  = npar;
 opt_pow.mc.C     = C;
 opt_pow.mc.speak = false;
     
+
+if 0    
+    % Plot cost function as we keep one image static and translate another one
+    check_obj(Nii,lam,npar,[1 2],0,60,120);
+end
+
 if flags.speak
     % Verbose
     display_results(q,Nii,mat0,Mmu0,dmmu0,lam,npar,1,'Input');
+end
+
+if flags.save_mtv
+    % Write non-aligned MTV to NIfTI
+    save_mtv('MTV-0.nii',Nii,q,mat0,Mmu0,dmmu0,lam,npar)
 end
 
 %--------------------------------------------------------------------------
@@ -164,7 +180,15 @@ for k=1:numel(flags.fwhm)
     matk = zeros(4,4,C);
     dmk  = zeros(C,3);
     for c=1:C        
-        if flags.speak > 1, figure(666); if c == 1, clf(figure(666)); end; subplot(nr,nc,c); end
+        if flags.speak > 1
+            if c == 1  
+                set_figure('(SPM) Input images',true); 
+            else
+                set_figure('(SPM) Input images'); 
+            end 
+            subplot(nr,nc,c); 
+        end        
+
         
         [fc,matk(:,:,c),dmk(c,:)] = get_img(Nii(c),max(samp,1),fwhm,flags.degsamp);
         f{c}                      = spm_diffeo('bsplinc',fc,[2 2 2 0 0 0]);
@@ -211,6 +235,11 @@ for k=1:numel(flags.fwhm)
     end
 end
 
+if flags.save_mtv
+    % Write non-aligned MTV to NIfTI
+    save_mtv('MTV-1.nii',Nii,q,mat0,Mmu0,dmmu0,lam,npar)
+end
+
 %--------------------------------------------------------------------------
 % Prepare output
 %--------------------------------------------------------------------------
@@ -234,7 +263,7 @@ if flags.write
         
         FileName = Nii(c).dat.fname;    
         Mf       = Nii(c).mat;
-        spm_get_space(FileName, Mmu0\(R(:,:,c)\Mf)); % TODO: double check that this is REALLY the way to set orientation matrix
+        spm_get_space(FileName, R(:,:,c)\Mf); % TODO: double check that this is REALLY the way to set orientation matrix
 
         Nii_reg(c) = nifti(FileName);
     end    
@@ -314,7 +343,7 @@ if show
         mtv1 = mtv1 - tv(:,:,:,c);
     end
     
-    figure(667);
+    set_figure('(SPM) Live MTV'); 
     if dmmu(3) == 1
         subplot(111)
         imagesc(mtv1'); axis off xy image;
@@ -506,8 +535,11 @@ for c=1:C
     mtv = mtv - tv(:,:,:,c);
 end
     
-figure(665);
-if plt == 1, clf(figure(665)); end
+if plt == 1
+    set_figure('(SPM) Registration results',true); 
+else
+    set_figure('(SPM) Registration results'); 
+end
 
 if dmmu(3) == 1
     subplot(1,2,plt);imagesc(mtv'); axis off xy image
@@ -650,63 +682,45 @@ img = single(img);
 %==========================================================================
 
 %==========================================================================
-function val = check_obj(Nii,ix,fwhm,mx,stps,samp,deg)
-if nargin < 2, ix   = [1 2]; end
-if nargin < 3, fwhm = 0;     end
-if nargin < 4, mx   = 60;    end
-if nargin < 5, stps = 100;   end
-if nargin < 6, samp = 1;     end
-if nargin < 7, deg  = 0;     end
-
-C    = numel(Nii);
-is2d = numel(Nii(1).dat.dim) == 2;
-
-% Get scaling parameters (lambda)
-lam = zeros(1,C);
-for c=1:C
-    [~,mu_brain] = fit_gmm(Nii(c));
-    mu           = mean(mu_brain);
-    lam(c)       = 1/double(mu);
-end
+function val = check_obj(Nii,lam,npar,ix,fwhm,mx,stps,samp,deg)
+if nargin < 4,  ix   = [1 2]; end
+if nargin < 5,  fwhm = 0;     end
+if nargin < 6,  mx   = 60;    end
+if nargin < 7,  stps = 100;   end
+if nargin < 8,  samp = 1;     end
+if nargin < 9,  deg  = 1;     end
 
 % Get image data (possibly subsample and smooth)
+C    = numel(Nii);
 f    = cell(1,C);
-matk = zeros(4,4,C);
-dmk  = zeros(C,3);
+mat0 = zeros(4,4,C);
+dm0  = zeros(C,3);
 for c=1:C        
-    [fc,matk(:,:,c),dmk(c,:)] = get_img(Nii(c),1/max(samp,1),fwhm,deg);
+    [fc,mat0(:,:,c),dm0(c,:)] = get_img(Nii(c),1/max(samp,1),fwhm,deg);
     f{c}                      = spm_diffeo('bsplinc',fc,[2 2 2 0 0 0]);
 end
-clear fc
-    
-% Number of registration parameters
-if is2d, npar = 3;
-else     npar = 6;
-end
-
-% Pick two images based on ix
-lam = lam(ix);
-f   = f(ix);
+clear fc    
 
 % Parameter range
 par = linspace(-mx,0,stps);
 par = [par(1:end - 1) linspace(0,mx,stps)];
 
 % Compute objective for a range of values
+set_figure('(SPM) Cost function',true); 
 val = zeros(1,numel(par));
 q   = zeros(1,numel(ix)*npar); 
 qr  = zeros(1,6); 
-for i=1:numel(par)
-    fprintf('%i ',i)
+for p=1:numel(par)
+    fprintf('%i ',p)
        
     mat = [];
     dm  = [];
     for i1=ix
-        mat = cat(3,mat,matk(:,:,i1));
-        dm  = [dm; dmk(i1,:)];
+        mat = cat(3,mat,mat0(:,:,i1));
+        dm  = [dm; dm0(i1,:)];
     end
     
-    qr(1)        = par(i);
+    qr(1)        = par(p);
     R            = spm_matrix(qr(:)');
     mat(:,:,end) = R*mat(:,:,end);
     
@@ -715,11 +729,21 @@ for i=1:numel(par)
     fovmu      = fovmu(1:3);
     x          = get_x(dmmu);
     
-    val(i) = optfun(q,f,x,mat,Mmu,dmmu,lam,npar,fovmu,true);
+    val(p) = optfun(q,f(ix),x,mat,Mmu,dmmu,lam(ix),npar,fovmu,true);
     
-    figure(668); plot(par(1:i),val(1:i),'b-x'); drawnow
+    set_figure('(SPM) Cost function'); 
+    plot(par(1:p),val(1:p),'b-x'); drawnow
 end
 fprintf('Done!\n')
+
+set_figure('(SPM) Cost function',true); 
+plot(par(1:p),val(1:p), ...
+    'b-', ...
+    'LineWidth',2); 
+fontsize = 16;
+xlabel('x-translation (mm)','fontsize',fontsize)
+ylabel('cost function value','fontsize',fontsize)
+drawnow
 %==========================================================================
 
 %==========================================================================
@@ -750,4 +774,36 @@ rng('default')
 rng(1);       
 x = get_id(dmmu);  
 x = x + rand(size(x),'single');
-%==========================================================================    
+%==========================================================================
+
+%==========================================================================
+function save_mtv(fname,Nii,q,mat,Mmu,dmmu,lam,npar)
+C = numel(Nii);
+f = cell(1,C);
+for c=1:C
+    f{c} = spm_diffeo('bsplinc',single(Nii(c).dat(:,:,:)),[2 2 2 0 0 0]);
+end
+
+x        = get_x(dmmu);
+[mtv,tv] = compute_mtv(q,f,x,mat,Mmu,dmmu,lam,npar);
+
+for c=1:C
+    mtv = mtv - tv(:,:,:,c);
+end
+
+create_nii(fname,mtv,Mmu,[spm_type('float32') spm_platform('bigend')],'MTV');
+%==========================================================================
+
+%==========================================================================
+function set_figure(figname,do_clear)
+if nargin < 2, do_clear = false; end
+
+f = findobj('Type', 'Figure', 'Name', figname);
+if isempty(f)
+    f = figure('Name', figname, 'NumberTitle', 'off');
+end
+set(0, 'CurrentFigure', f);   
+if do_clear
+    clf(f);
+end
+%==========================================================================

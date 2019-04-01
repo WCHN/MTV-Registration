@@ -20,17 +20,19 @@ p.addParameter('BiasFieldScl',0);
 p.addParameter('ShowSimulated',false);
 p.addParameter('ThickSliced',false);
 p.addParameter('Margin',{});
+p.addParameter('DirPrint','');
 p.parse(varargin{:});
-DirRef        = p.Results.DirRef;
-DirSim        = p.Results.DirSim;
-NoisePrct     = p.Results.NoisePrct;     % Percentage of amount of Gaussian noise to add
-Offset        = p.Results.Offset;
-Rotation      = p.Results.Rotation;
-BiasFieldScl  = p.Results.BiasFieldScl;  % Simulate a bias field when value is greater than zero
-ShowSimulated = p.Results.ShowSimulated; % Show simulated images vs reference
-mrg           = p.Results.Margin;
-DownSampling          = p.Results.DownSampling;
-DownSamplingDeg        = p.Results.DownSamplingDeg;
+DirRef          = p.Results.DirRef;
+DirSim          = p.Results.DirSim;
+NoisePrct       = p.Results.NoisePrct;     % Percentage of amount of Gaussian noise to add
+Offset          = p.Results.Offset;
+Rotation        = p.Results.Rotation;
+BiasFieldScl    = p.Results.BiasFieldScl;  % Simulate a bias field when value is greater than zero
+ShowSimulated   = p.Results.ShowSimulated; % Show simulated images vs reference
+mrg             = p.Results.Margin;
+DownSampling    = p.Results.DownSampling;
+DownSamplingDeg = p.Results.DownSamplingDeg;
+DirPrint        = p.Results.DirPrint;
 
 %--------------------------------------------------------------------------
 % Parameters
@@ -69,6 +71,13 @@ DirSim3D = fullfile(DirSim,'3D');
 DirSim2D = fullfile(DirSim,'2D');
 if  (exist(DirSim3D,'dir') == 7),  rmdir(DirSim3D,'s'); end; mkdir(DirSim3D);
 if  (exist(DirSim2D,'dir') == 7),  rmdir(DirSim2D,'s'); end; mkdir(DirSim2D);
+
+if ~isempty(DirPrint) 
+    if (exist(DirPrint,'dir') == 7)  
+        rmdir(DirPrint,'s'); 
+    end
+    mkdir(DirPrint);
+end
 
 %--------------------------------------------------------------------------
 % Get reference BrainWeb images
@@ -235,29 +244,6 @@ if ShowSimulated
 
     spm_check_registration(char(fnames))
 end
-%==========================================================================
-
-%==========================================================================
-function Nii = create_nii(pth,dat,mat,dtype,descrip,offset,scl_slope,scl_inter)
-% Create a NIfTI file
-%__________________________________________________________________________
-% Copyright (C) 2018 Wellcome Trust Centre for Neuroimaging
-
-if nargin<6, offset    = 0; end
-if nargin<7, scl_slope = 1; end
-if nargin<8, scl_inter = 0; end
-
-if exist(pth,'file')==2, delete(pth); end
-
-Nii         = nifti;
-dm          = size(dat);
-Nii.dat     = file_array(pth,dm,dtype,offset,scl_slope,scl_inter);
-Nii.mat     = mat;
-Nii.mat0    = mat;
-Nii.descrip = descrip;
-create(Nii);
-
-Nii.dat(:) = dat(:);
 %==========================================================================
 
 %==========================================================================
