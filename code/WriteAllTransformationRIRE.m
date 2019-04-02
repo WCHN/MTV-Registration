@@ -110,7 +110,8 @@ From      = [1    1    1    1
              DimFrom(1) DimFrom(2) 1    1
              DimFrom(1) DimFrom(2) DimFrom(3) 1]';  
 From = From(:,IxCorners);
-From = MatFlip*(MatFrom*From);
+From = MatFrom*From;
+% From = MatFlip*From;
 
 To = R\From;
 %==========================================================================

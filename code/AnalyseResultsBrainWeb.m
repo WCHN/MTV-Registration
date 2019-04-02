@@ -1,14 +1,10 @@
-function AnalyseResults(Res)
+function AnalyseResultsBrainWeb(Res)
 
-var = load('Res-N2000-3d.mat');
-Res = var.Res;
-clear var
-
-% Implement possibility to limit range of ds,noise,off,rot and bf in
-% boxplot
+% var = load('Res-N2000-3d.mat');
+% Res = var.Res;
+% clear var
 
 N = numel(Res);
-% N = 2000;
 
 val_mtv = get_val(Res,'mtv');
 val_mi  = get_val(Res,'mi');

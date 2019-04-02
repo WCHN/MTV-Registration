@@ -1,7 +1,7 @@
 function BrainWeb
 
 dir_distributed_toolbox = '/home/mbrud/dev/mbrud/code/matlab/distributed-computing';
-dir_code                = '/home/mbrud/dev/mbrud/code/matlab/MTV-reg/code';
+dir_code                = '../code';
 addpath(dir_code);
 addpath(dir_distributed_toolbox);
 
