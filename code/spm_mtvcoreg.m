@@ -24,7 +24,7 @@ if nargin < 3
     % most as many elements as flags.fwhm (1 == no subsampling)
     if ~isfield(flags,'samp'),   flags.samp    = [3 2 1.5 1]; end
     % Degree to subsample each image
-    if ~isfield(flags,'degsamp'),flags.degsamp = 4; end 
+    if ~isfield(flags,'degsamp'),flags.degsamp = 0; end 
     % For iteratively decreasing voxel size of template (mu). Needs to be at
     % most as many elements as flags.fwhm
     if ~isfield(flags,'vxmu'),   flags.vxmu    = [2 1.75 1.5 1]; end
@@ -688,7 +688,7 @@ if nargin < 5,  fwhm = 0;     end
 if nargin < 6,  mx   = 60;    end
 if nargin < 7,  stps = 100;   end
 if nargin < 8,  samp = 1;     end
-if nargin < 9,  deg  = 1;     end
+if nargin < 9,  deg  = 0;     end
 
 % Get image data (possibly subsample and smooth)
 C    = numel(Nii);

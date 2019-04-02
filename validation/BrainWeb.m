@@ -32,7 +32,6 @@ opt_gen.Run3D   = false;
 % MTV flags
 opt_mtv         = struct;
 opt_mtv.write   = false; 
-opt_mtv.degsamp = 4; 
 opt_mtv.bbpad   = 0;
 opt_mtv.bbmni   = false;
 opt_mtv.mx_tr   = 100;

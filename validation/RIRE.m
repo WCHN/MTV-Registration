@@ -19,7 +19,6 @@ DoMTV = true;
 % MTV flags
 OptionsMTV.speak    = 1;
 OptionsMTV.bbpad    = 0;%[0 0 0;0 60 0];
-OptionsMTV.degsamp  = 4; 
 % OptionsMTV.fwhm     = 0;
 OptionsMTV.bbmni    = false;
 % OptionsMTV.samp     = 1;
