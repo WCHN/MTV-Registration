@@ -22,7 +22,7 @@ if nargin < 3
     if ~isfield(flags,'fwhm'),   flags.fwhm    = [12 8 4 0]; end 
     % For iteratively decreasing subsampling of images (f). Needs to be at
     % most as many elements as flags.fwhm (1 == no subsampling)
-    if ~isfield(flags,'samp'),   flags.samp    = [3 2 1.5 1]; end
+    if ~isfield(flags,'samp'),   flags.samp    = 1; end
     % Degree to subsample each image
     if ~isfield(flags,'degsamp'),flags.degsamp = 0; end 
     % For iteratively decreasing voxel size of template (mu). Needs to be at
