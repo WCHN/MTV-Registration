@@ -1,4 +1,4 @@
-# MTV-Registration
+# Groupwise, rigid medical image alignment
 
 ## Overview
-This code implements inter-modal registration of medical images (e.g., MRI, CT, PET) using a multi-channel total variation (MTV) cost function.
+Groupwise, between modality coregistration using a normalised joint total variation (NJTV) cost function. Code at https://github.com/brudfors/coregistration-njtv.git.
